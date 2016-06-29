@@ -464,7 +464,7 @@ void do_timer(long cpl)
 		next_timer->jiffies--;
 		while (next_timer && next_timer->jiffies <= 0) {
 			void (*fn)(void);       // 这里插入了一个函数指针定义!!!! o(︶︿︶)o 
-			
+
 			fn = next_timer->fn;
 			next_timer->fn = NULL;
 			next_timer = next_timer->next;
