@@ -1,0 +1,139 @@
+Benamrouche Abdel 
+email : draconux _at_ gmail _point_ com
+creation date : 2007/01/01
+last update : 2008/01/24
+
+
+Note:
+========
+
+How to build linux 0.01 with newer gcc ?
+Note : I have not tested it in a real computer, 
+because I d'ont have an empty HDD.
+I use qemu, and I will explain how to run linux 0.01 in qemu.
+If you want to try it in your HDD, then do it at your 
+own risk.
+
+
+
+Create your virtual HDD :
+=========================
+
+create a 40 MB file
+> dd if=/dev/zero of=hdb.img bs=1M count=40
+
+setup Cyls, Heads, Sects and create 1 partition
+> losetup /dev/loop0 hdb.img
+> fdisk -H 4 -S 20 -C 1024 /dev/loop0
+with fisk create a primary partition.
+Also note where begin the first partition.
+it's should be 20 x 512 = 10240
+> losetup -d /dev/loop0
+
+create old minix partition
+> losetup -o 10240 /dev/loop0 hdb.img
+> mkfs.minix -n 14 /dev/loop0
+
+mount your virtual hdd 
+> mount /dev/loop0 /mnt/mnt_hdb_img
+in your hdd create directory bin and usr
+you can write some txt file, if you want to try to read it
+Later you you will be able to create copy some userspace program.
+
+before executing qemu don't forget to umount first your hdd
+
+
+Linux 0.01 kernel :
+=====================
+
+
+In include/linux/config.h and include/linux/hdreg.h:
+----------------------------------------------------
+
+change the HDD parameters to match with your virtual HDD
+
+In kernel/hd.c :
+----------------
+
+change this line if your HDD is master
+> /*0xB0 for slave, 0xA0 for master*/
+> outb_p(0xB0|(drive<<4)|head,++port);
+
+I think that's all.
+Build your kernel with make.
+You should have a file Image, it's your linux 0.01
+
+
+Keyboard :
+----------
+
+Linux 0.01 need a finish keyboard !
+You can change it.
+TODO : provide us and fr keyboard patch
+
+
+Simple userland program:
+=================
+
+Linux 0.01 don't want to load my a.out binay format builded with newer gcc.
+So from linux-0.01-3.x a.out binary format is dropped, instead we use elf loader.
+
+So how to build an elf binary program for our linux 0.01
+
+print_prog.c
+-------------------------------------
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+void main(int argc,char* argv[]){
+        setsid();
+	(void) open("/dev/tty0",O_RDWR,0);
+	(void) dup(0);
+	(void) dup(0);
+
+	write(1,"bonjour\n",strlen("bonjour\n"));
+
+	_exit(2);
+}
+--------------------------------------
+
+build it with :
+>  gcc -o test.bin main.c -nostdlib -nostdinc -e main -Ttext=100 -static -fno-builtin LINUX_DIR/lib/lib.a -ILINUX_DIR/vgt_test_so/include
+
+where LINUX_DIR is you path to your linux0.01 kernel
+
+
+Note :
+We use here void main() and _exit(0); 
+if you want to use int main() and return 0; instead you will need
+to add crt0.s
+TODO : link to crt0.s
+
+
+Complex userland program :
+==========================
+
+Linux 0.01 has a mini-libc ( in lib/ folder )
+If you want to port a comlex program ( for example emacs ) you will probably
+need a lot of function wich are not implemented.
+
+If you don't want to implement it, just use something like  dietlibc or uclibc.
+Note : I have ported dietlibc, and it's work fine.
+Maybe uclibc is better ... I don't know.
+
+So to create a program using dietlibc :
+TODO : write command here
+
+
+Execute your kernel:
+=====================
+
+qemu -fda Image -hdb hdb.img -boot a -m 8
+
+
+voila, that's all.
+happy hacking
+Abdel
+
+
